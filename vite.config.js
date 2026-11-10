@@ -8,6 +8,6 @@ import react from "@vitejs/plugin-react";
 
 export default defineConfig({
   plugins: [react()],
-  base: "/YOUR_REPO_NAME/",
+  base: "/event-accelerator/",
   server: { allowedHosts: true },
 });
