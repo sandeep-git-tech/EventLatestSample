@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { api, list, toEvent, toPass, money, date, EMAIL, EVENTS_PATH } from "./ci.js";
 
+const GATEWAY_URL = (import.meta.env.VITE_GATEWAY_URL || "").replace(/\/$/, "");
+
 export default function CustomEvent() {
-  const path = window.location.pathname;
-  if (path.startsWith("/payment/success")) return <Result ok />;
-  if (path.startsWith("/payment/cancel")) return <Result />;
+  if (new URLSearchParams(window.location.search).has("payment")) return <Result />;
   return <Register />;
 }
 
@@ -116,12 +116,54 @@ function Register() {
   );
 }
 
-function Result({ ok }) {
+function Result() {
+  const q = new URLSearchParams(window.location.search);
+  const ok = q.get("payment") === "success";
+  const id = q.get("session_id");
+
+  const [d, setD] = useState(null);
+  const [err, setErr] = useState("");
+
+  useEffect(() => {
+    if (!ok || !id) return;
+    fetch(`${GATEWAY_URL}/GatewayRedirect/Payment/${encodeURIComponent(id)}`)
+      .then((r) => { if (!r.ok) throw new Error(`Could not load payment details (${r.status}).`); return r.json(); })
+      .then(setD)
+      .catch((e) => setErr(e.message));
+  }, [ok, id]);
+
   return (
     <section className="panel center">
-      <h2>{ok ? "Payment received" : "Payment cancelled"}</h2>
-      <p className="muted">{ok ? "Your registration is being confirmed. You'll get an email shortly." : "No charge was made. You can register again."}</p>
-      <div className="bar"><a className="primary" href="/">{ok ? "Back to events" : "Try again"}</a></div>
+      <h2>{ok ? "Payment successful" : "Payment cancelled"}</h2>
+      <p className="muted">
+        {ok
+          ? d?.email
+            ? `A confirmation will be sent to ${d.email}.`
+            : "Your registration is being confirmed. You'll get an email shortly."
+          : "No charge was made. You can register again."}
+      </p>
+
+      {err && <p className="err" role="alert">{err}</p>}
+
+      {d && (
+        <table className="bill">
+          <tbody>
+            {d.lines.map((l, i) => (
+              <tr key={i}>
+                <td>{l.description}{l.quantity > 1 ? ` × ${l.quantity}` : ""}</td>
+                <td>{money(l.amount, d.currency)}</td>
+              </tr>
+            ))}
+            <tr className="total"><td>Total paid</td><td>{money(d.total, d.currency)}</td></tr>
+            <tr><td>Status</td><td>{d.status}</td></tr>
+            <tr><td>Reference</td><td><code>{d.reference}</code></td></tr>
+          </tbody>
+        </table>
+      )}
+
+      <div className="bar">
+        <a className="primary" href={window.location.pathname}>{ok ? "Back to events" : "Try again"}</a>
+      </div>
     </section>
   );
 }

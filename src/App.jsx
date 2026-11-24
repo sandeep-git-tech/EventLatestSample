@@ -8,7 +8,16 @@ const TABS = [
   { id: "embedding", label: "Embedding" },
 ];
 
-const fromHash = () => (window.location.hash === "#embedding" ? "embedding" : "custom");
+// Stripe returns to ?payment=success&session_id=... (or ?payment=cancel).
+const isReturnPage = () => new URLSearchParams(window.location.search).has("payment");
+
+// Stripe sends the user back without a #hash,
+// so on those pages we fall back to the tab they were last on.
+const fromHash = () => {
+  if (window.location.hash === "#embedding") return "embedding";
+  if (isReturnPage() && sessionStorage.getItem("tab") === "embedding") return "embedding";
+  return "custom";
+};
 
 export default function App() {
   const [tab, setTab] = useState(fromHash);
@@ -19,7 +28,11 @@ export default function App() {
     return () => window.removeEventListener("hashchange", on);
   }, []);
 
-  const go = (id) => { window.location.hash = id === "embedding" ? "embedding" : ""; setTab(id); };
+  const go = (id) => {
+    sessionStorage.setItem("tab", id);
+    window.location.hash = id === "embedding" ? "embedding" : "";
+    setTab(id);
+  };
 
   return (
     <div className="app">
@@ -34,11 +47,19 @@ export default function App() {
 
       <header className="hero">
         <h1>{tab === "custom" ? "Event registration" : "Embedded registration"}</h1>
-        <p>{tab === "custom" ? "Choose your event and pass, then pay securely." : "Browse an event, then register, pick sessions and merchandise, and pay in one place."}</p>
+        <p>{tab === "custom" ? "Choose your event and pass, then pay securely." : "Browse an event, then register, pick sessions and merchandise, review your bill, and pay."}</p>
       </header>
 
       <main>
-        {!BASE || !TOKEN ? <Setup /> : tab === "custom" ? <CustomEvent /> : <Embedding />}
+        {!BASE || !TOKEN ? (
+          <Setup />
+        ) : isReturnPage() ? (
+          <CustomEvent /> /* renders the payment success / cancel page, whichever tab you came from */
+        ) : tab === "custom" ? (
+          <CustomEvent />
+        ) : (
+          <Embedding />
+        )}
       </main>
     </div>
   );

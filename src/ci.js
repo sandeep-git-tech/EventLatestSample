@@ -14,7 +14,7 @@ export async function api(path, options) {
 
 /* Mappers: the only place that knows CI field names.
    If something shows blank, open DevTools > Network, look at the JSON and adjust here. */
-export const list = (d) => (Array.isArray(d) ? d : d?.value ?? d?.items ?? d?.events ?? d?.passes ?? []);
+export const list = (d) => (Array.isArray(d) ? d : d?.value ?? d?.items ?? d?.events ?? d?.passes ?? d?.sessions ?? []);
 export const toEvent = (e) => ({
   key: e.readableEventId ?? e.readableEventID ?? e.msevtmgt_readableeventid ?? e.id,
   name: e.name ?? e.eventName ?? e.msevtmgt_name ?? "Untitled event",
@@ -32,6 +32,12 @@ export const toPass = (p) => {
     currency: p.currency ?? p.currencyCode ?? p.isoCurrencyCode ?? "USD",
   };
 };
+export const toSession = (s) => ({
+  id: s.id ?? s.sessionId ?? s.msevtmgt_sessionid,
+  name: s.name ?? s.title ?? s.msevtmgt_name ?? "Session",
+  start: s.startDate ?? s.startTime ?? s.msevtmgt_starttime,
+  location: s.location ?? s.room ?? "",
+});
 
 export const money = (n, c) => { try { return new Intl.NumberFormat(undefined, { style: "currency", currency: c }).format(n); } catch { return `${n} ${c}`; } };
 export const date = (d) => (d ? new Date(d).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }) : "");
